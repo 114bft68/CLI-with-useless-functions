@@ -1,14 +1,17 @@
 #include "tools.h"
 
-static void** toBeFreed[10];
-static FILE** toBeClosed[5];
+#define maxAlloc 20 // change this value
+#define maxOpenf 20  // change this value
+
+static void** toBeFreed[maxAlloc];
+static FILE** toBeClosed[maxOpenf];
 static int allocCount = 0;
 static int openCount = 0;
 
-int prompt(char* string, int length) {
+int prompt(char* string, const int length) {
     if (string) {
         if (!fgets(string, length, stdin)) {
-            perror("\nUnable to read input");
+            printf("\nUnable to read input\n");
             return 1;
         } else {
             if (strlen(string) == length - 1 && string[length - 2] != '\n') {
@@ -22,41 +25,93 @@ int prompt(char* string, int length) {
     return 1;
 }
 
-int alloc(void** ptr, size_t size) {
-    if (ptr) {
-        if (!(*ptr = malloc(size))) {
-            return 1;
+int alloc(void** ptr, const size_t size) {
+    if (allocCount <= maxAlloc - 1) {
+        if (ptr) {
+            if (!(*ptr = malloc(size))) {
+                printf("\nUnable to allocate memory\n");
+                return 1;
+            }
+            toBeFreed[allocCount++] = ptr;
+            return 0;
         }
-        toBeFreed[allocCount++] = ptr;
-        return 0;
+    } else {
+        printf("\nPlease adjust the relevant value (maxAlloc) in \"tools.c\"\n");
     }
     return 1;
 }
 
-void freealloc(void** ptr) {
+int freealloc(void** ptr) {
     if (ptr && *ptr) {
+        int index = -1;
+        for (int i = 0; i < allocCount; i++) {
+            if (toBeFreed[i] == ptr) {
+                index = i;
+                break;
+            }
+        }
+
         free(*ptr);
         *ptr = NULL;
+
+        if (index == -1) {
+            return 1;
+        }
+
+        for (int i = index; i < allocCount - 1; i++) {
+            toBeFreed[i] = toBeFreed[i + 1];
+            toBeFreed[i + 1] = NULL;
+        }
+
+        if (allocCount > 0) {
+            --allocCount;
+        }
     }
 }
 
-int openf(FILE** ptr, char* path, char* mode) {
-    if (ptr) {
-        if (!(*ptr = fopen(path, mode))) {
-            perror("\nUnable to open a file");
-            return 1;
+int openf(FILE** ptr, const char* path, const char* mode) {
+    if (openCount <= maxOpenf - 1) {
+        if (ptr) {
+            if (!(*ptr = fopen(path, mode))) {
+                perror("\nUnable to open a file");
+                return 1;
+            }
+            toBeClosed[openCount++] = ptr;
+            return 0;
         }
-        toBeClosed[openCount++] = ptr;
-        return 0;
+    } else {
+        printf("\nPlease adjust the relevant value (maxOpenf) in \"tools.c\"\n");
     }
     return 1;
 }
 
 int closef(FILE** ptr) {
     if (ptr && *ptr) {
+        int index = -1;
+        for (int i = 0; i < openCount; i++) {
+            if (toBeClosed[i] == ptr) {
+                index = i;
+                break;
+            }
+        }
+
         if (fclose(*ptr)) {
-            perror("\nUnable to close a file");
+            printf("\nUnable to close a file\n");
             return 1;
+        }
+        *ptr = NULL;
+
+        if (index == -1) {
+            return 1;
+        }
+
+        for (int i = index; i < openCount - 1; i++) {
+            toBeClosed[i] = toBeClosed[i + 1];
+            toBeFreed[i + 1] = NULL;
+        }
+
+        if (openCount > 0) {
+            --openCount;
         }
         return 0;
     }
@@ -64,10 +119,10 @@ int closef(FILE** ptr) {
 }
 
 void readyToExit() {
-    for (int i = 0; i < allocCount; i++) {
+    for (int i = 0; i < allocCount + 1; i++) {
         freealloc(toBeFreed[i]);
     }
-    for (int i = 0; i < openCount; i++) {
+    for (int i = 0; i < openCount + 1; i++) {
         closef(toBeClosed[i]);
     }
 }
