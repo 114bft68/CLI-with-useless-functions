@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include "tools.h"
 
 #define CMD_LENGTH  17 // max length for each command + \n\0
@@ -13,20 +14,20 @@ const char* COMMANDS[] = {
     "prefix",
     "swapfiles",
     "mergefiles",
-    "tictactoe",
+    "deletefile",
     "clear",
     "exit"
 };
 
 #define COMMANDS_COUNT (sizeof(COMMANDS) / sizeof(COMMANDS[0]))
 
-char* ActualCommands[COMMANDS_COUNT];
+char ActualCommands[COMMANDS_COUNT][CMD_LENGTH];
 
 int commandIndex(char* cmd);
 void sendHelp();
 int changePrefix(int n, char* str);
 int filesTreatments(int mode); // swap (0) || merge (1)
-int ticTacToe();
+int deletefile();
 
 struct files {
     char path[PATH_LENGTH];
@@ -53,7 +54,7 @@ int main() {
                 sendHelp();
                 break;
             case 1:
-                changePrefix(0, "");
+                changePrefix(0, "--");
                 break;
             case 2:
                 printf("\n** Only swap files with the same extension **\n");
@@ -64,7 +65,7 @@ int main() {
                 filesTreatments(1);
                 break;
             case 4:
-
+                deletefile();
                 break;
             case 5:
                 #if defined(_WIN32)
@@ -108,20 +109,14 @@ int changePrefix(int n, char* str) {
     exitm(alloc((void**) &prefix, 4)); // 2 characters \n\0
     
     if (n) {
-        strcpy(prefix, "--");
+        strcpy(prefix, str);
     } else {
         printf("\nPrefix (default: --):\n>> ");
         exitm(prompt(prefix, 4)); // get input
     }
 
     for (int i = 0; i < COMMANDS_COUNT; i++) {
-        char completeCommand[16] = ""; // should definitely be enough for a complete command \0
-        exitm(alloc((void**) &ActualCommands[i], sizeof(char) * (strlen(COMMANDS[i]) + strlen(prefix) + 1)));
-
-        strcat(completeCommand, prefix);
-        strcat(completeCommand, COMMANDS[i]);
-
-        strcpy(ActualCommands[i], completeCommand);
+        sprintf(ActualCommands[i], "%s%s", prefix, COMMANDS[i]);
     }
 
     if (!n) printf("\nSuccessfully changed the prefix\n");
@@ -220,5 +215,48 @@ int filesTreatments(int mode) {
 
     printf("\nSuccess!\n");
     readyToExit(); // the function frees memory and closes files for me
+    return 0;
+}
+
+int deletefile() {
+    struct files FileToDelete[2];
+    strcpy(FileToDelete[0].mode, "rb");
+    strcpy(FileToDelete[1].mode, "wb");
+
+    printf("\nPlease input the path of the file to be deleted:\n>> ");
+    exitm(prompt(FileToDelete[0].path, PATH_LENGTH));
+
+    exitm(openf(&FileToDelete[0].open, FileToDelete[0].path, FileToDelete[0].mode));
+
+    if (fseek(FileToDelete[0].open, 0, SEEK_END) || (FileToDelete[0].charsCount = ftell(FileToDelete[0].open))) {
+        // SEEK_SET is not needed as the file will be deleted soon
+        printf("\nAn error has occurred %s: %s\n", FileToDelete[0].charsCount ? "(ftell)" : "(fseek)", strerror(errno));
+        exitm(1);
+    }
+
+    exitm(closef(&FileToDelete[0].open));
+
+    int error;
+    
+    if (error = remove(FileToDelete[0].path)) exitm(printf("\nFailed to delete the file: %s\n", strerror(error)) || 1);
+    // if there's an error => printf, then exitm(1)
+
+    exitm(openf(&FileToDelete[1].open, FileToDelete[0].path, FileToDelete[1].mode));
+
+    srand(time(NULL));
+
+    for (long i = 0; i < FileToDelete[0].charsCount; i++) {
+        if (fputc('a' + rand() % 26, FileToDelete[1].open) == EOF) { // random character from a - z (a + (0 to 25))
+            perror("\nAn error has occurred");
+            exitm(1);
+        }
+    }
+
+    exitm(closef(&FileToDelete[1].open));
+
+    if (error = remove(FileToDelete[0].path)) exitm(printf("\nFailed to delete the file: %s\n", strerror(error)) || 1);
+
+    printf("\nSuccess!\n");
+    readyToExit();
     return 0;
 }
