@@ -66,7 +66,9 @@ int freealloc(void** ptr) {
         if (allocCount > 0) {
             --allocCount;
         }
+        return 0;
     }
+    return 1;
 }
 
 int openf(FILE** ptr, const char* path, const char* mode) {
@@ -107,7 +109,7 @@ int closef(FILE** ptr) {
 
         for (int i = index; i < openCount - 1; i++) {
             toBeClosed[i] = toBeClosed[i + 1];
-            toBeFreed[i + 1] = NULL;
+            toBeClosed[i + 1] = NULL;
         }
 
         if (openCount > 0) {
@@ -119,10 +121,10 @@ int closef(FILE** ptr) {
 }
 
 void readyToExit() {
-    for (int i = 0; i < allocCount + 1; i++) {
-        freealloc(toBeFreed[i]);
+    while (allocCount > 0) {
+        freealloc(toBeFreed[--allocCount]);
     }
-    for (int i = 0; i < openCount + 1; i++) {
-        closef(toBeClosed[i]);
+    while (openCount > 0) {
+        closef(toBeClosed[--openCount]);
     }
 }
