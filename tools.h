@@ -8,9 +8,9 @@
 
 int prompt(char* string, const int length);
 int alloc(void** ptr, const size_t size);
-int freealloc(void** ptr);
+int freealloc(void* ptr);
 int openf(FILE** ptr, const char* path, const char* mode);
-int closef(FILE** ptr);
-void readyToExit();
+int closef(FILE* ptr);
+void readyToExit(void);
 
 #endif

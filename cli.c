@@ -24,10 +24,10 @@ const char* COMMANDS[] = {
 char ActualCommands[COMMANDS_COUNT][CMD_LENGTH];
 
 int commandIndex(char* cmd);
-void sendHelp();
+void sendHelp(void);
 int changePrefix(int n, char* str);
 int filesTreatments(int mode); // swap (0) || merge (1)
-int deletefile();
+int deletefile(void);
 
 struct files {
     char path[PATH_LENGTH];
@@ -38,7 +38,7 @@ struct files {
 };
 
 int end = 0;
-int main() {
+int main(void) {
     changePrefix(1, "--");
 
     char command[CMD_LENGTH];
@@ -97,7 +97,7 @@ int commandIndex(char* cmd) {
     return -1;
 }
 
-void sendHelp() {
+void sendHelp(void) {
     printf("\nAvailable commands:\n");
     for (int i = 0; i < COMMANDS_COUNT; i++) {
         printf("%s\n", ActualCommands[i]);
@@ -120,7 +120,7 @@ int changePrefix(int n, char* str) {
     }
 
     if (!n) printf("\nSuccessfully changed the prefix\n");
-    freealloc((void**) &prefix);
+    freealloc((void*) prefix);
 }
 
 int filesTreatments(int mode) {
@@ -182,7 +182,7 @@ int filesTreatments(int mode) {
     }
 
     if (!mode) {
-        exitm(closef(&file[0].open) || closef(&file[1].open) ||
+        exitm(closef(file[0].open) || closef(file[1].open) ||
         openf(&file[0].open, file[0].path, "wb") || openf(&file[1].open, file[1].path, "wb"));
 
         // !mode => either 0 or 1
@@ -219,7 +219,7 @@ int filesTreatments(int mode) {
     return 0;
 }
 
-int deletefile() {
+int deletefile(void) {
     struct files FileToDelete[2];
     strcpy(FileToDelete[0].mode, "rb");
     strcpy(FileToDelete[1].mode, "wb");
@@ -237,7 +237,7 @@ int deletefile() {
         exitm(1);
     }
 
-    exitm(closef(&FileToDelete[0].open));
+    exitm(closef(FileToDelete[0].open));
 
     int error;
     
@@ -255,7 +255,7 @@ int deletefile() {
         }
     }
 
-    exitm(closef(&FileToDelete[1].open));
+    exitm(closef(FileToDelete[1].open));
 
     if (error = remove(FileToDelete[0].path)) exitm(printf("\nFailed to delete the file: %s\n", strerror(error)) || 1);
 
